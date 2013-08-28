@@ -1,0 +1,6 @@
+GAME OF LIFE
+============
+
+Just mucking around with Game of Life in Ruby, learning about ANSI
+control codes and writing terminal apps that control the screen more
+directly.

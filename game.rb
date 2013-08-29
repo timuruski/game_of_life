@@ -15,6 +15,63 @@ module Game
     World.new(config).start
   end
 
+  class Border
+    def initialize(glyphs)
+      @hborder, @vborder,
+      @tlcorner, @trcorner,
+      @blcorner, @brcorner = glyphs.split('')
+    end
+
+    attr_reader :hborder, :vborder,
+                :tlcorner, :trcorner,
+                :blcorner, :brcorner
+  end
+
+  class Box
+    def initialize(x, y, width, height)
+      @x, @y = x, y
+      @width, @height = width, height
+      @border = Border.new('━┃┏┓┗┛')
+      # @border = Border.new('═║╔╗╚╝')
+    end
+
+    attr_reader :width, :height, :x, :y
+
+    def to_s
+      ''.tap do |s|
+        height.times do |y|
+          width.times do |x|
+            if y == 0 && x == 0
+              c = @border.tlcorner
+            elsif y == 0 && x == width - 1
+              c = @border.trcorner
+            elsif y == height - 1 && x == 0
+              c = @border.blcorner
+            elsif y == height - 1 && x == width - 1
+              c = @border.brcorner
+            elsif y == 0 || y == height - 1
+              c = @border.hborder
+            elsif x == 0 || x == width - 1
+              c = @border.vborder
+            else
+              c = " "
+            end
+
+            s << c
+          end
+          s << "\n"
+        end
+      end
+    end
+
+    def draw(out)
+      out.print "\e[0m"
+      to_s.each_line.with_index do |line, i|
+        out.print "\e[#{y + i};#{x}f" + line
+      end
+    end
+  end
+
   class World
     def initialize(config)
       @config = config
@@ -28,12 +85,20 @@ module Game
       IO.console.echo = false
       handle_signals
 
+      win_height, win_width = IO.console.winsize
+      box_width = win_width / 2
+      box_height = win_height / 2
+      box_x = (win_width / 2) - (box_width / 2)
+      box_y = (win_height / 2) - (box_height / 2)
+      @box = Box.new(box_x, box_y, box_width, box_height)
+
+
       clear
       while @running
         reset_cursor
         draw
         $stdout.flush
-        sleep 0.3
+        sleep 0.1
       end
 
       IO.console.echo = false
@@ -41,43 +106,8 @@ module Game
       clear
     end
 
-    HBORDER = "━"
-    VBORDER = "┃"
-    TLCORNER = "┏"
-    TRCORNER = "┓"
-    BLCORNER = "┗"
-    BRCORNER = "┛"
-
     def draw
-      win_height, win_width = IO.console.winsize
-      box_height, box_width = [20, 72]
-
-      box = ''.tap do |s|
-        box_height.times do |y|
-          box_width.times do |x|
-            if y == 0 && x == 0
-              c = TLCORNER
-            elsif y == 0 && x == box_width - 1
-              c = TRCORNER
-            elsif y == box_height - 1 && x == 0
-              c = BLCORNER
-            elsif y == box_height - 1 && x == box_width - 1
-              c = BRCORNER
-            elsif y == 0 || y == box_height - 1
-              c = HBORDER
-            elsif x == 0 || x == box_width - 1
-              c = VBORDER
-            else
-              c = " "
-            end
-
-            s << c
-          end
-          s << "\n"
-        end
-      end
-
-      IO.console.puts box
+      @box.draw(IO.console)
     end
 
     def width

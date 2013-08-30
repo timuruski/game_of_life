@@ -17,109 +17,77 @@ module Game
 
   class Border
     def initialize(glyphs)
-      @hborder, @vborder,
-      @tlcorner, @trcorner,
-      @blcorner, @brcorner = glyphs.split('')
+      @h,@v,@tl,@tr,@bl,@br = glyphs.split('')
     end
 
-    attr_reader :hborder, :vborder,
-                :tlcorner, :trcorner,
-                :blcorner, :brcorner
-  end
-
-  class Box
-    def initialize(x, y, width, height)
-      @x, @y = x, y
-      @width, @height = width, height
-      @border = Border.new('━┃┏┓┗┛')
-      # @border = Border.new('═║╔╗╚╝')
-    end
-
-    attr_reader :width, :height, :x, :y
-
-    def to_s
-      ''.tap do |s|
-        height.times do |y|
-          width.times do |x|
-            if y == 0 && x == 0
-              c = @border.tlcorner
-            elsif y == 0 && x == width - 1
-              c = @border.trcorner
-            elsif y == height - 1 && x == 0
-              c = @border.blcorner
-            elsif y == height - 1 && x == width - 1
-              c = @border.brcorner
-            elsif y == 0 || y == height - 1
-              c = @border.hborder
-            elsif x == 0 || x == width - 1
-              c = @border.vborder
-            else
-              c = " "
-            end
-
-            s << c
-          end
-          s << "\n"
-        end
-      end
-    end
-
-    def draw(out)
-      out.print "\e[0m"
-      to_s.each_line.with_index do |line, i|
-        out.print "\e[#{y + i};#{x}f" + line
-      end
-    end
+    attr_reader :h,:v,:tl,:tr,:bl,:br
   end
 
   class World
+    FRAME_RATE = 12.0
+
     def initialize(config)
       @config = config
       @running = false
+      @rows = 16
+      @cols = 32
     end
 
-    attr_reader :config
+    attr_reader :config, :rows, :cols
+
+    def before_start
+      # randomize cells
+    end
 
     def start
       @running = true
       IO.console.echo = false
       handle_signals
 
-      win_height, win_width = IO.console.winsize
-      box_width = win_width / 2
-      box_height = win_height / 2
-      box_x = (win_width / 2) - (box_width / 2)
-      box_y = (win_height / 2) - (box_height / 2)
-      @box = Box.new(box_x, box_y, box_width, box_height)
-
+      before_start
 
       clear
       while @running
         reset_cursor
         draw
         $stdout.flush
-        sleep 0.1
+        sleep 1.0 / FRAME_RATE
       end
 
       IO.console.echo = false
-      sleep 0.2
       clear
     end
 
     def draw
-      @box.draw(IO.console)
+      draw_border
+      draw_grid
+      # @box.draw(IO.console)
     end
 
-    def width
-      config.size
+    def draw_border
+      win_height, win_width = IO.console.winsize
+
+      t = (win_height / 2) - (rows / 2)
+      r = (win_width / 2) + (cols / 2)
+      b = (win_height / 2) + (rows / 2)
+      l = (win_width / 2) - (cols / 2)
+
+      @b = Border.new('━┃┏┓┗┛')
+      rows.times { |y|
+        print "#{pos(t + y,l,@b.v)}#{pos(t + y,r + 1,@b.v)}" }
+      print pos(t,l,"#{@b.tl}#{@b.h * cols}#{@b.tr}")
+      print pos(b,l,"#{@b.bl}#{@b.h * cols}#{@b.br}")
     end
 
-    def height
-      config.size
+    def draw_grid
     end
 
-    def line(str = '')
-      puts "\e[0K" + str
+    def print(str)
+      IO.console.print(str)
+    end
+
+    def pos(y,x,char = nil)
+      "\e[#{y};#{x}f#{char}"
     end
 
     def position_cursor(y,x)

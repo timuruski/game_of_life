@@ -29,8 +29,9 @@ module Game
     def initialize(config)
       @config = config
       @running = false
-      @rows = 16
-      @cols = 32
+      @rows = config.size
+      @cols = config.size * 2
+      @framerate = config.framerate
     end
 
     attr_reader :config, :rows, :cols
@@ -51,7 +52,7 @@ module Game
         reset_cursor
         draw
         $stdout.flush
-        sleep 1.0 / FRAME_RATE
+        sleep 1.0 / @framerate
       end
 
       IO.console.echo = false
@@ -115,7 +116,20 @@ module Game
   module Config
     def self.parse(args)
       config = OpenStruct.new
-      config.size = 2
+      config.size = 16
+      config.framerate = 12
+
+      parser = OptionParser.new do |opts|
+        opts.on '-s', '--size SIZE', "Size of the world" do |value|
+          config.size = value.to_i
+        end
+
+        opts.on '--framerate RATE', "Framerate to render at" do |value|
+          config.framerate = value.to_i
+        end
+      end.parse!(args)
+
+      config
     end
   end
 

@@ -3,16 +3,19 @@
 require 'io/console'
 
 module Conway
-  FRAMERATE = 0.02
+  FRAMERATE = 0.20
   SEED = 1
 
   def self.run(args)
-    [:INT, :QUIT].each { |s| trap(s) { exit } }
     Random.srand(SEED)
-
-    world = World.new
     IO.console.echo = false
 
+    [:INT, :QUIT].each { |s| trap(s) {
+      IO.console.print World::CLEAR
+      exit
+    } }
+
+    world = World.new
     loop do
       world.draw
       world.tick
@@ -28,7 +31,7 @@ module Conway
     CLEAR = "\e[2J"
     RESET = "\e[H"
     DEAD = "\e[0m "
-    ALIVE = "\e[7m "
+    ALIVE = "\e[0;41m "
 
     def initialize(rows = nil, cols = nil)
       win_rows, win_cols = IO.console.winsize
@@ -75,7 +78,7 @@ module Conway
     def should_die?(cell, row, col)
       neighbors = neighbors_of(row, col)
       alive = neighbors.select { |c| c == ALIVE }.length
-      dead = neighbors.select { |c| c == DEAD }.length
+      # dead = neighbors.select { |c| c == DEAD }.length
 
       alive < 2 || alive > 3
     end

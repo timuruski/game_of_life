@@ -3,11 +3,17 @@
 require 'io/console'
 
 module Conway
-  FRAMERATE = 0.02
+  FRAMERATE = 0.01
   TEST_STATE = <<-WORLD
 
-    X
-     X
+           x
+            x
+          xxx
+
+
+                  x
+                 x
+                 xxx
   WORLD
 
   def self.run(args)
@@ -34,12 +40,13 @@ module Conway
     PROB = 0.01
 
     CLEAR = "\e[0m\e[2J"
-    DEAD = "\e[0m "
-    ALIVE = "\e[0;41m "
+    DEAD = "\e[0m"
+    ALIVE = "\e[0;41m"
 
     def initialize(rows, cols, initial_state = nil)
       @rows, @cols = rows, cols
-      @cells = setup_cells_from_seed(SEED)
+      @cells = setup_cells_from_string(initial_state)
+      # @cells = setup_cells_from_seed(SEED)
     end
 
     def tick
@@ -66,13 +73,22 @@ module Conway
     protected
 
     def setup_cells_from_string(string)
+      seed = string.split("\n")
+      Array.new(@rows) do |r|
+        line = seed[r] || []
+        Array.new(@cols) do |c|
+          s = !!(/\w/ === line[c])
+          # puts "#{r}/#{c}/#{line[c]}/#{s}"
+          # sleep 0.5
+        end
+      end
     end
 
     def setup_cells_from_seed(seed)
       r = Random.srand(SEED)
 
-      Array.new(@rows) do |i|
-        Array.new(@cols) do |i|
+      Array.new(@rows) do
+        Array.new(@cols) do
           rand < PROB
         end
       end
@@ -81,14 +97,22 @@ module Conway
     end
 
     def draw_cell(cell)
-      cell ? ALIVE : DEAD
+      "#{cell ? ALIVE : DEAD} "
     end
 
     # Returns: false for dead, alive for true
     def dead_or_alive?(row, col)
+      cell = @cells[row][col]
       living_neighbors = neighbors_of(row, col)
       living_neighbors = living_neighbors.select { |n| n == true }.length
-      !(living_neighbors < 2 || living_neighbors > 3)
+
+      if living_neighbors == 3
+        true
+      elsif living_neighbors == 2
+        cell
+      else
+        false
+      end
     end
 
     def should_die?(cell, row, col)

@@ -3,53 +3,49 @@
 require 'io/console'
 
 module Conway
-  FRAMERATE = 0.20
-  SEED = 1
+  FRAMERATE = 0.02
+  TEST_STATE = <<-WORLD
+
+    X
+     X
+  WORLD
 
   def self.run(args)
-    Random.srand(SEED)
     IO.console.echo = false
 
+    win_rows, win_cols = IO.console.winsize
+    world = World.new(win_rows, win_cols, TEST_STATE)
+    world.clear
+
     [:INT, :QUIT].each { |s| trap(s) {
-      IO.console.print World::CLEAR
+      world.clear
       exit
     } }
 
-    world = World.new
     loop do
       world.draw
-      world.tick
       sleep FRAMERATE
+      world.tick
     end
   end
 
   class World
+    SEED = 42
     PROB = 0.01
-    DEFAULT_ROWS = 24
-    DEFAULT_COLS = 48
 
-    CLEAR = "\e[2J"
-    RESET = "\e[H"
+    CLEAR = "\e[0m\e[2J"
     DEAD = "\e[0m "
     ALIVE = "\e[0;41m "
 
-    def initialize(rows = nil, cols = nil)
-      win_rows, win_cols = IO.console.winsize
-      @rows = rows || win_rows
-      @cols = cols || win_cols
-
-      @cells = Array.new(@rows) do |i|
-        Array.new(@cols) do |i|
-          rand > PROB ? DEAD : ALIVE
-        end
-      end
+    def initialize(rows, cols, initial_state = nil)
+      @rows, @cols = rows, cols
+      @cells = setup_cells_from_seed(SEED)
     end
 
     def tick
       new_cells = Array.new(@rows) do |r|
         Array.new(@cols) do |c|
-          cell = @cells[r][c]
-          should_die?(cell, r, c) ? DEAD : ALIVE
+          dead_or_alive?(r, c)
         end
       end
 
@@ -57,29 +53,47 @@ module Conway
     end
 
     def draw
-      IO.console.print CLEAR
-      IO.console.puts @cells.map { |row| row.join('') }
+      cells = @cells.map { |row|
+        row.map { |c| draw_cell(c) }.join('') }.join("\n")
+      IO.console.print cells
+      IO.console.flush
     end
 
-    def draw_slow
-      # IO.console.print CLEAR
-      IO.console.print RESET
-      @cells.each_with_index do |cols, r|
-        cols.each_with_index do |cell, c|
-          draw_cell(r, c, cell)
-        end
-      end
-
-      IO.console.flush
+    def clear
+      IO.console.print CLEAR
     end
 
     protected
 
+    def setup_cells_from_string(string)
+    end
+
+    def setup_cells_from_seed(seed)
+      r = Random.srand(SEED)
+
+      Array.new(@rows) do |i|
+        Array.new(@cols) do |i|
+          rand < PROB
+        end
+      end
+    ensure
+      Random.srand(r)
+    end
+
+    def draw_cell(cell)
+      cell ? ALIVE : DEAD
+    end
+
+    # Returns: false for dead, alive for true
+    def dead_or_alive?(row, col)
+      living_neighbors = neighbors_of(row, col)
+      living_neighbors = living_neighbors.select { |n| n == true }.length
+      !(living_neighbors < 2 || living_neighbors > 3)
+    end
+
     def should_die?(cell, row, col)
       neighbors = neighbors_of(row, col)
       alive = neighbors.select { |c| c == ALIVE }.length
-      # dead = neighbors.select { |c| c == DEAD }.length
-
       alive < 2 || alive > 3
     end
 
@@ -101,14 +115,6 @@ module Conway
       return nil if col < 0 || col > @cols - 1
 
       @cells[row][col]
-    end
-
-    def draw_cell(row, col, cell)
-      # win_rows, win_cols = IO.console.winsize
-      # row = (win_rows / 2) - (@rows / 2) + row
-      # col = (win_cols / 2) - (@cols / 2) + col
-
-      IO.console.print "\e[#{row};#{col}H#{cell}"
     end
 
   end

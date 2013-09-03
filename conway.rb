@@ -3,24 +3,13 @@
 require 'io/console'
 
 module Conway
-  FRAMERATE = 0.01
-  TEST_STATE = <<-WORLD
-
-           x
-            x
-          xxx
-
-
-                  x
-                 x
-                 xxx
-  WORLD
+  FRAMERATE = 0.10
 
   def self.run(args)
     IO.console.echo = false
 
     win_rows, win_cols = IO.console.winsize
-    world = World.new(win_rows, win_cols, TEST_STATE)
+    world = World.new(win_rows, win_cols, DATA.read)
     world.clear
 
     [:INT, :QUIT].each { |s| trap(s) {
@@ -145,3 +134,13 @@ module Conway
 end
 
 Conway.run(ARGV) if $0 == __FILE__
+
+__END__
+
+
+
+
+
+                              x
+                               x
+                             xxx

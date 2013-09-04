@@ -10,6 +10,5 @@ constant. This is manually triggered by editing the program, but I'll
 probably have it read from STDIN or have some sort user input loop
 during setup so the world can be painted with a cursor.
 
-```
-$ ruby conway.rb
-```
+  $ ruby conway.rb
+

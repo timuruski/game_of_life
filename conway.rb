@@ -3,7 +3,7 @@
 require 'io/console'
 
 module Conway
-  FRAMERATE = 0.10
+  FRAMERATE = 0.05
 
   def self.run(args)
     IO.console.echo = false
@@ -26,7 +26,10 @@ module Conway
 
   class World
     SEED = 42
-    PROB = 0.01
+    PROB = 0.10
+
+    LIVING_CELL = true
+    DEAD_CELL = false
 
     CLEAR = "\e[0m\e[2J"
     DEAD = "\e[0m"
@@ -34,14 +37,18 @@ module Conway
 
     def initialize(rows, cols, initial_state = nil)
       @rows, @cols = rows, cols
+      @size = rows * cols
       @cells = setup_cells_from_string(initial_state)
       # @cells = setup_cells_from_seed(SEED)
     end
 
     def tick
-      new_cells = Array.new(@rows) do |r|
-        Array.new(@cols) do |c|
-          dead_or_alive?(r, c)
+      new_cells = []
+
+      @rows.times do |r|
+        @cols.times do |c|
+          s = dead_or_alive?(r, c)
+          new_cells << s
         end
       end
 
@@ -49,10 +56,21 @@ module Conway
     end
 
     def draw
-      cells = @cells.map { |row|
-        row.map { |c| draw_cell(c) }.join('') }.join("\n")
-      IO.console.print cells
+      cells = ""
+      @rows.times do |r|
+        @cols.times do |c|
+          cell = cell(r, c)
+          cells << draw_cell(cell)
+        end
+        cells << "\n"
+      end
+
+      IO.console.print cells.chomp
       IO.console.flush
+    end
+
+    def draw_cell(cell)
+      "#{cell == LIVING_CELL ? ALIVE : DEAD} "
     end
 
     def clear
@@ -62,72 +80,60 @@ module Conway
     protected
 
     def setup_cells_from_string(string)
+      cells = []
       seed = string.split("\n")
-      Array.new(@rows) do |r|
+      @rows.times do |r|
         line = seed[r] || []
-        Array.new(@cols) do |c|
-          s = !!(/\w/ === line[c])
-          # puts "#{r}/#{c}/#{line[c]}/#{s}"
-          # sleep 0.5
+        @cols.times do |c|
+          s = (/\w/ === line[c]) ? LIVING_CELL : DEAD_CELL
+          cells << s
         end
       end
+
+      cells
     end
 
     def setup_cells_from_seed(seed)
-      r = Random.srand(SEED)
-
-      Array.new(@rows) do
-        Array.new(@cols) do
-          rand < PROB
-        end
-      end
+      sr = Random.srand(seed)
+      Array.new(@rows * @cols) { (rand < PROB) ? LIVING_CELL : DEAD_CELL }
     ensure
-      Random.srand(r)
-    end
-
-    def draw_cell(cell)
-      "#{cell ? ALIVE : DEAD} "
+      Random.srand(sr)
     end
 
     # Returns: false for dead, alive for true
     def dead_or_alive?(row, col)
-      cell = @cells[row][col]
-      living_neighbors = neighbors_of(row, col)
-      living_neighbors = living_neighbors.select { |n| n == true }.length
+      cell = cell(row, col)
+      living_neighbors = living_neighbors(row, col)
 
       if living_neighbors == 3
-        true
+        LIVING_CELL
       elsif living_neighbors == 2
         cell
       else
-        false
+        DEAD_CELL
       end
     end
 
-    def should_die?(cell, row, col)
-      neighbors = neighbors_of(row, col)
-      alive = neighbors.select { |c| c == ALIVE }.length
-      alive < 2 || alive > 3
-    end
+    def living_neighbors(row, col)
+      score = 0
 
-    def neighbors_of(row, col)
-      [
-        cell(row - 1, col - 1),
-        cell(row - 1, col),
-        cell(row - 1, col + 1),
-        cell(row, col - 1),
-        cell(row, col + 1),
-        cell(row + 1, col - 1),
-        cell(row + 1, col),
-        cell(row + 1, col + 1)
-      ].compact
+      score += 1 if cell(row - 1, col - 1) == LIVING_CELL
+      score += 1 if cell(row - 1, col) == LIVING_CELL
+      score += 1 if cell(row - 1, col + 1) == LIVING_CELL
+      score += 1 if cell(row, col - 1) == LIVING_CELL
+      score += 1 if cell(row, col + 1) == LIVING_CELL
+      score += 1 if cell(row + 1, col - 1) == LIVING_CELL
+      score += 1 if cell(row + 1, col) == LIVING_CELL
+      score += 1 if cell(row + 1, col + 1) == LIVING_CELL
+
+      score
     end
 
     def cell(row, col)
       return nil if row < 0 || row > @rows - 1
       return nil if col < 0 || col > @cols - 1
 
-      @cells[row][col]
+      @cells[@cols * row + col]
     end
 
   end

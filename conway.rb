@@ -3,29 +3,32 @@
 require 'io/console'
 
 module Conway
-  FRAMERATE = 0.05
+  FRAMERATE = 10
 
   def self.run(args)
     IO.console.echo = false
 
     win_rows, win_cols = IO.console.winsize
     world = World.new(win_rows, win_cols, DATA.read)
-    world.clear
+    # world.clear
 
-    [:INT, :QUIT].each { |s| trap(s) {
+    at_exit do
       world.clear
-      exit
-    } }
+    end
+
+    [:INT, :QUIT].each do |signal|
+      trap(signal, 'EXIT')
+    end
 
     loop do
       world.draw
-      sleep FRAMERATE
+      sleep 1.0 / FRAMERATE
       world.tick
     end
   end
 
   class World
-    SEED = 42
+    SEED = 123 # 42
     PROB = 0.10
 
     LIVING_CELL = true
@@ -38,8 +41,8 @@ module Conway
     def initialize(rows, cols, initial_state = nil)
       @rows, @cols = rows, cols
       @size = rows * cols
-      @cells = setup_cells_from_string(initial_state)
-      # @cells = setup_cells_from_seed(SEED)
+      # @cells = setup_cells_from_string(initial_state)
+      @cells = setup_cells_from_seed(SEED)
     end
 
     def tick
@@ -56,7 +59,7 @@ module Conway
     end
 
     def draw
-      cells = ""
+      cells = ''
       @rows.times do |r|
         @cols.times do |c|
           cell = cell(r, c)
@@ -117,14 +120,14 @@ module Conway
     def living_neighbors(row, col)
       score = 0
 
-      score += 1 if cell(row - 1, col - 1) == LIVING_CELL
-      score += 1 if cell(row - 1, col) == LIVING_CELL
-      score += 1 if cell(row - 1, col + 1) == LIVING_CELL
-      score += 1 if cell(row, col - 1) == LIVING_CELL
-      score += 1 if cell(row, col + 1) == LIVING_CELL
-      score += 1 if cell(row + 1, col - 1) == LIVING_CELL
-      score += 1 if cell(row + 1, col) == LIVING_CELL
-      score += 1 if cell(row + 1, col + 1) == LIVING_CELL
+      score += 1 if living?(row - 1, col - 1)
+      score += 1 if living?(row - 1, col)
+      score += 1 if living?(row - 1, col + 1)
+      score += 1 if living?(row, col - 1)
+      score += 1 if living?(row, col + 1)
+      score += 1 if living?(row + 1, col - 1)
+      score += 1 if living?(row + 1, col)
+      score += 1 if living?(row + 1, col + 1)
 
       score
     end
@@ -134,6 +137,10 @@ module Conway
       return nil if col < 0 || col > @cols - 1
 
       @cells[@cols * row + col]
+    end
+
+    def living?(row, col)
+      cell(row, col) == LIVING_CELL
     end
 
   end

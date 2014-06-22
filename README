@@ -5,10 +5,11 @@ Just mucking around with Game of Life in Ruby, learning about ANSI
 control codes and writing terminal apps that control the screen more
 directly.
 
-The world can be setup using either a random seed, or with the DATA
-constant. This is manually triggered by editing the program, but I'll
-probably have it read from STDIN or have some sort user input loop
-during setup so the world can be painted with a cursor.
+The world can be setup using a random seed from env variable SEED or by
+reading an input file. There are samples for a glider and a gosper
+glider gun.
 
-  $ ruby conway.rb
+  $ ruby conway.rb glider
+
+  $ SEED=42 ruby conway.rb
 

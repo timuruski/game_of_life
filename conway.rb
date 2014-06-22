@@ -3,14 +3,23 @@
 require 'io/console'
 
 module Conway
-  FRAMERATE = 10
+  LIVE_CELL = true
+  DEAD_CELL = false
+
+  DEFAULT_SEED = 123 # 42
+  PROB = 0.10
+
+  TICKRATE = 10
 
   def self.run(args)
     IO.console.echo = false
 
     win_rows, win_cols = IO.console.winsize
-    world = World.new(win_rows, win_cols, DATA.read)
-    # world.clear
+    initial_state = ARGV.any? ?
+      state_from_string(win_rows, win_cols, ARGF.read) :
+      state_from_seed(win_rows, win_cols, ENV.fetch('SEED', DEFAULT_SEED))
+
+    world = World.new(win_rows, win_cols, initial_state)
 
     at_exit do
       world.clear
@@ -22,27 +31,38 @@ module Conway
 
     loop do
       world.draw
-      sleep 1.0 / FRAMERATE
+      sleep 1.0 / TICKRATE
       world.tick
     end
   end
 
+  def self.state_from_string(rows, cols, string)
+    cells = []
+    seed = string.split("\n")
+    rows.times do |r|
+      line = seed[r] || []
+      cols.times do |c|
+        s = (/[xX]/ === line[c]) ? LIVE_CELL : DEAD_CELL
+        cells << s
+      end
+    end
+
+    cells
+  end
+
+  def self.state_from_seed(cols, rows, seed)
+    gen = Random.new(seed.to_i)
+    Array.new(rows * cols) { (gen.rand < PROB) ? LIVE_CELL : DEAD_CELL }
+  end
+
   class World
-    SEED = 123 # 42
-    PROB = 0.10
+    LIGHT = "\e[0m"
+    DARK  = "\e[7m"
 
-    LIVING_CELL = true
-    DEAD_CELL = false
-
-    CLEAR = "\e[0m\e[2J"
-    DEAD = "\e[0m"
-    ALIVE = "\e[0;41m"
-
-    def initialize(rows, cols, initial_state = nil)
+    def initialize(rows, cols, initial_state)
       @rows, @cols = rows, cols
       @size = rows * cols
-      # @cells = setup_cells_from_string(initial_state)
-      @cells = setup_cells_from_seed(SEED)
+      @cells = initial_state
     end
 
     def tick
@@ -68,40 +88,22 @@ module Conway
         cells << "\n"
       end
 
+      IO.console.print "\e[0;0H"
       IO.console.print cells.chomp
       IO.console.flush
     end
 
     def draw_cell(cell)
-      "#{cell == LIVING_CELL ? ALIVE : DEAD} "
+      cell == LIVE_CELL ?
+        "#{DARK} " :
+        "#{LIGHT} "
     end
 
     def clear
-      IO.console.print CLEAR
+      IO.console.print "\e[0;0H\e[K\e[0m"
     end
 
     protected
-
-    def setup_cells_from_string(string)
-      cells = []
-      seed = string.split("\n")
-      @rows.times do |r|
-        line = seed[r] || []
-        @cols.times do |c|
-          s = (/\w/ === line[c]) ? LIVING_CELL : DEAD_CELL
-          cells << s
-        end
-      end
-
-      cells
-    end
-
-    def setup_cells_from_seed(seed)
-      sr = Random.srand(seed)
-      Array.new(@rows * @cols) { (rand < PROB) ? LIVING_CELL : DEAD_CELL }
-    ensure
-      Random.srand(sr)
-    end
 
     # Returns: false for dead, alive for true
     def dead_or_alive?(row, col)
@@ -109,7 +111,7 @@ module Conway
       living_neighbors = living_neighbors(row, col)
 
       if living_neighbors == 3
-        LIVING_CELL
+        LIVE_CELL
       elsif living_neighbors == 2
         cell
       else
@@ -133,27 +135,17 @@ module Conway
     end
 
     def cell(row, col)
-      return nil if row < 0 || row > @rows - 1
-      return nil if col < 0 || col > @cols - 1
+      row = row % @rows
+      col = col % @cols
 
       @cells[@cols * row + col]
     end
 
     def living?(row, col)
-      cell(row, col) == LIVING_CELL
+      cell(row, col) == LIVE_CELL
     end
 
   end
 end
 
 Conway.run(ARGV) if $0 == __FILE__
-
-__END__
-
-
-
-
-
-                              x
-                               x
-                             xxx
